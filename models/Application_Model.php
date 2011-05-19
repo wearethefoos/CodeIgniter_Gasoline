@@ -37,6 +37,20 @@ class Application_Model extends CI_Model {
 	public $validate = array();
 	
 /**
+ * Data contained by the model.
+ * 
+ * @access public
+ */
+	public $data = array();
+	
+/**
+ * Id of the current record.
+ * 
+ * @access public
+ */
+	public $id = false;
+	
+/**
  * Validation errors
  * 
  * @access public
@@ -49,11 +63,24 @@ class Application_Model extends CI_Model {
  * 
  * Initiates the parent constructor and
  * tries to load behavior classes.
+ * 
+ * If a collection name is provided as
+ * a parameter, the model can be used
+ * as a standard model, like so:
+ * 
+ * (e.g. in a controller)
+ * $myModel = new Application_Model('MyCollection');
+ * 
+ * @param [optional] string $collection
  */
 
-	public function __construct() {
+	public function __construct($collection = "") {
 		
 		parent::__construct();
+		
+		if (!$this->collection) {
+			$this->collection = $collection;
+		}
 		
 		// Loads behaviors
 		$this->init();
@@ -70,10 +97,19 @@ class Application_Model extends CI_Model {
 		$this->load->library('mongo_db');
 		
 		// load and init behaviors
-		foreach ($actsAs as $behavior) {
+		foreach ($this->actsAs as $behavior) {
 			$this->load->model('behaviors/' . $behavior . '_behavior', $behavior);
 			$this->{$behavior}->init();
 		}
+	}
+	
+/**
+ * Setter for model data
+ * 
+ * @access public
+ */
+	public function set($field, $value = "") {
+		$this->data[$field] = $value;
 	}
 	
 /**
@@ -86,16 +122,19 @@ class Application_Model extends CI_Model {
 	public function insert($insert = array()) {
 		// validate data first
 		if ($this->validate($insert)) {
+			// set model data
+			$this->data = array_merge($this->data, $insert);
+			
 			// before insert callback
-			$this->beforeInsert($insert);
+			$this->beforeInsert($this, $insert);
 			
 			// insert
-			$result = $this->mongo_db->insert($insert);
+			$this->id = $this->mongo_db->insert($this->collection, $this->data);
 			
 			// after insert callback
-			$this->afterInsert($result);
+			$this->afterInsert($this, $this->id);
 			
-			return $result;
+			return $this->id;
 		}
 		
 		return false;
@@ -112,11 +151,21 @@ class Application_Model extends CI_Model {
 	public function update($data = array(), $options = array()) {
 		// validate data first
 		if ($this->validate($data)) {
+			// set model data
+			$this->data = array_merge($this->data, $data);
+			
+			if (isset($this->data['_id'])) {
+				$options['_id'] = $this->data['_id'];
+			}
+			elseif ($this->id) {
+				$options['_id'] = $this->id;
+			}
+			
 			// before insert callback
 			$this->beforeUpdate($data);
 
 			// insert
-			$result = $this->mongo_db->update($data, $options);
+			$result = $this->mongo_db->update($this->collection, $this->data, $options);
 
 			// after insert callback
 			$this->afterUpdate($result);
@@ -125,6 +174,33 @@ class Application_Model extends CI_Model {
 		}
 
 		return false;
+	}
+	
+/**
+ * Delete
+ * 
+ * @access public
+ * @param Mixed $id: Id of the record to delete.
+ * @return boolean: success
+ */
+	public function delete($id = null) {
+		if ($id) {
+			return $this->mongo_db->where(array('_id' => $id))->delete($this->collection);
+		}
+	}
+	
+/**
+ * Delete
+ * 
+ * @access public
+ * @param array [optional] $conditions: conditions of the records to delete.
+ * * * !! if left empty, all will be deleted !! * * *
+ * @return boolean: success
+ */
+	public function deleteAll($conditions = array()) {
+		if ($id) {
+			return $this->mongo_db->where($conditions)->delete($this->collection);
+		}
 	}
 	
 /**
@@ -140,12 +216,10 @@ class Application_Model extends CI_Model {
 		
 			// instantiate the Validation class
 			$this->load->model('Validation');
-		
+			
 			foreach ($this->validate as $field => $criteria) {
-				$message = $this->validate->check($field, $data, $criteria);
-				if ($message !== true) {
+				if ($this->Validation->check($this, $field, $data, $criteria) !== true) {
 					$valid = false;
-					$this->validation_errors[$field] = $message;
 				}
 			}
 			
@@ -154,8 +228,19 @@ class Application_Model extends CI_Model {
 			}
 			
 		}
-		
+				
 		return $valid;
+	}
+	
+/**
+ * Check if a specified value is unique for a certain field.
+ * 
+ * @access public
+ * @param string $field: the field to check.
+ * @param mixed $value: the value to check.
+ */
+	public function isUnique($field = "", $value = "") {
+		return $this->mongo_db->isUnique($this->collection, $field, $value);
 	}
 	
 /**
@@ -180,8 +265,8 @@ class Application_Model extends CI_Model {
  * @return boolean: success or failure.
  */
 	public function beforeValidate($data = array()) {
-		foreach($actsAs as $behavior) {
-			if ($this->{$behavior}->beforeValidate($data) === false) {
+		foreach($this->actsAs as $behavior) {
+			if ($this->{$behavior}->beforeValidate($this, $data) === false) {
 				return false;
 			}
 		}
@@ -197,8 +282,8 @@ class Application_Model extends CI_Model {
  * @return boolean: success or failure.
  */
 	public function afterValidate($data = array()) {
-		foreach($actsAs as $behavior) {
-			if ($this->{$behavior}->afterValidate($data) === false) {
+		foreach($this->actsAs as $behavior) {
+			if ($this->{$behavior}->afterValidate($this, $data) === false) {
 				return false;
 			}
 		}
@@ -213,8 +298,8 @@ class Application_Model extends CI_Model {
  * @param Array $insert: data to be inserted.
  */
 	public function beforeInsert($insert = array()) {
-		foreach($actsAs as $behavior) {
-			$this->{$behavior}->beforeInsert($insert);
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->beforeInsert($this, $insert);
 		}
 	}
 
@@ -225,8 +310,8 @@ class Application_Model extends CI_Model {
  * @param mixed $result: id if successful | false if unsuccesful
  */
 	public function afterInsert($result) {
-		foreach($actsAs as $behavior) {
-			$this->{$behavior}->afterInsert($update, $options);
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->afterInsert($this, $update, $options);
 		}
 	}
 
@@ -238,8 +323,8 @@ class Application_Model extends CI_Model {
  * @param Array $options: query options
  */
 	public function beforeUpdate($update = array(), $options = array()) {
-		foreach($actsAs as $behavior) {
-			$this->{$behavior}->beforeUpdate($update, $options);
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->beforeUpdate($this, $update, $options);
 		}
 	}
 
@@ -250,8 +335,8 @@ class Application_Model extends CI_Model {
  * @param Boolean $success: whether or not the update was successful.
  */
 	public function afterUpdate($success = false) {
-		foreach($actsAs as $behavior) {
-			$this->{$behavior}->afterUpdate($success);
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->afterUpdate($this, $success);
 		}
 	}
 	
@@ -261,8 +346,8 @@ class Application_Model extends CI_Model {
  * @access public
  */
 	public function beforeGet() {
-		foreach($actsAs as $behavior) {
-			$this->{$behavior}->beforeGet();
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->beforeGet($this);
 		}
 	}
 	
@@ -272,8 +357,8 @@ class Application_Model extends CI_Model {
  * @access public
  */
 	public function afterGet($results = array()) {
-		foreach($actsAs as $behavior) {
-			$this->{$behavior}->afterGet($results);
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->afterGet($this, $results);
 		}
 	}
 }

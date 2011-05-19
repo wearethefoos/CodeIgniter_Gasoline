@@ -660,6 +660,34 @@ class Mongo_db {
 	}
 	
 	/**
+	 * --------------------------------------------------------------------------------
+	 * Is Unique?
+	 * --------------------------------------------------------------------------------
+	 * 
+	 * Check whether a given value for a given field is unique.
+	 * 
+	 * @usage: $this->mongo_db_isUnique('collection', 'foo', 'bar');
+	 */
+	public function isUnique($collection = "", $field = "", $value = "") {
+		if (empty($collection))
+		{
+			show_error("No Mongo collection selected to check", 500);
+		}
+		if (empty($field))
+		{
+			show_error("No field specified to check", 500);
+		}
+		if (empty($value))
+		{
+			show_error("No value specified to check", 500);
+		}
+		
+		$count = $this->db->{$collection}->find(array($field => $value))->count();
+		
+		return ($count == 0);
+	}
+	
+	/**
 	*	--------------------------------------------------------------------------------
 	*	//! Insert
 	*	--------------------------------------------------------------------------------
