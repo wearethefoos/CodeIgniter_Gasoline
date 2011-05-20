@@ -75,6 +75,7 @@ class Application_Model extends CI_Model {
  */
 
 	public function __construct($collection = "") {
+		$this->load->model('behaviors/behavior');
 		
 		parent::__construct();
 		
@@ -97,10 +98,50 @@ class Application_Model extends CI_Model {
 		$this->load->library('mongo_db');
 		
 		// load and init behaviors
-		foreach ($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			$this->load->model('behaviors/' . $behavior . '_behavior', $behavior);
-			$this->{$behavior}->init();
+			$this->{$behavior}->init($this, $settings);
 		}
+	}
+	
+/**
+ * Db
+ * 
+ * @access public
+ */
+	function db() {
+		return $this->mongo_db;
+	}
+	
+/**
+ * Get
+ * 
+ * @access public
+ * @return Mongo_db
+ */
+	public function get($params = array()) {
+		
+		$params = $this->beforeGet($params);
+		
+		if (isset($params['where'])) {
+			$this->mongo_db->where($params['where']);
+		}
+		if (isset($params['fields'])) {
+			$this->mongo_db->select($params['fields']);
+		}
+		if (isset($params['order'])) {
+			$this->mongo_db->order_by($params['order']);
+		}
+		if (isset($params['limit'])) {
+			$this->mongo_db->limit((int) $params['limit']);
+		}
+		if (isset($params['offset'])) {
+			$this->mongo_db->skip((int) $params['offset']);
+		}
+		
+		$results = $this->mongo_db->get($this->collection);
+		
+		return $this->afterGet($results);
 	}
 	
 /**
@@ -110,6 +151,23 @@ class Application_Model extends CI_Model {
  */
 	public function set($field, $value = "") {
 		$this->data[$field] = $value;
+	}
+	
+/**
+ * Getter for model data
+ * 
+ * @access public
+ * @param $field: the field to get
+ * @param $id [optional]: if an id is provided the collection is queried
+ * and the field value from the database is returned instead of the data
+ * contained by the model instance.
+ */
+	public function read($field, $id = null) {
+		if (!isset($this->data[$field]) || $id) {
+			return $this->mongo_db->select(array($field))->where(array('_id' => $id))->get($this->collection);
+		}
+		
+		return $this->data[$field];
 	}
 	
 /**
@@ -126,13 +184,13 @@ class Application_Model extends CI_Model {
 			$this->data = array_merge($this->data, $insert);
 			
 			// before insert callback
-			$this->beforeInsert($this, $insert);
+			$this->beforeInsert($insert);
 			
 			// insert
 			$this->id = $this->mongo_db->insert($this->collection, $this->data);
 			
 			// after insert callback
-			$this->afterInsert($this, $this->id);
+			$this->afterInsert($this->id);
 			
 			return $this->id;
 		}
@@ -229,7 +287,7 @@ class Application_Model extends CI_Model {
 	public function validate($data = array()) {
 		
 		if ($valid = $this->beforeValidate($data)) {
-		
+			
 			// instantiate the Validation class
 			$this->load->model('Validation');
 			
@@ -283,7 +341,7 @@ class Application_Model extends CI_Model {
  * @return boolean: success or failure.
  */
 	public function beforeValidate($data = array()) {
-		foreach($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			if ($this->{$behavior}->beforeValidate($this, $data) === false) {
 				return false;
 			}
@@ -300,7 +358,7 @@ class Application_Model extends CI_Model {
  * @return boolean: success or failure.
  */
 	public function afterValidate($data = array()) {
-		foreach($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			if ($this->{$behavior}->afterValidate($this, $data) === false) {
 				return false;
 			}
@@ -316,7 +374,7 @@ class Application_Model extends CI_Model {
  * @param Array $insert: data to be inserted.
  */
 	public function beforeInsert($insert = array()) {
-		foreach($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			$this->{$behavior}->beforeInsert($this, $insert);
 		}
 	}
@@ -328,8 +386,8 @@ class Application_Model extends CI_Model {
  * @param mixed $result: id if successful | false if unsuccesful
  */
 	public function afterInsert($result) {
-		foreach($this->actsAs as $behavior) {
-			$this->{$behavior}->afterInsert($this, $update, $options);
+		foreach($this->actsAs as $behavior => $settings) {
+			$this->{$behavior}->afterInsert($this, $result);
 		}
 	}
 
@@ -341,7 +399,7 @@ class Application_Model extends CI_Model {
  * @param Array $options: query options
  */
 	public function beforeUpdate($update = array(), $options = array()) {
-		foreach($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			$this->{$behavior}->beforeUpdate($this, $update, $options);
 		}
 	}
@@ -353,7 +411,7 @@ class Application_Model extends CI_Model {
  * @param Boolean $success: whether or not the update was successful.
  */
 	public function afterUpdate($success = false) {
-		foreach($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			$this->{$behavior}->afterUpdate($this, $success);
 		}
 	}
@@ -368,7 +426,7 @@ class Application_Model extends CI_Model {
  * via delete.
  */
 	public function beforeDelete($params, $multiple = false) {
-		foreach($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			$this->{$behavior}->beforeDelete($this, $params, $multiple);
 		}
 	}
@@ -380,7 +438,7 @@ class Application_Model extends CI_Model {
  * @param boolean $success: delete succeeded or not
  */
 	public function afterDelete($success) {
-		foreach($this->actsAs as $behavior) {
+		foreach($this->actsAs as $behavior => $settings) {
 			$this->{$behavior}->afterInsert($this, $success);
 		}
 	}
@@ -390,10 +448,12 @@ class Application_Model extends CI_Model {
  * 
  * @access public
  */
-	public function beforeGet() {
-		foreach($this->actsAs as $behavior) {
-			$this->{$behavior}->beforeGet($this);
+	public function beforeGet($params) {
+		foreach($this->actsAs as $behavior => $settings) {
+			$params = $this->{$behavior}->beforeGet($this, $params);
 		}
+		
+		return $params;
 	}
 	
 /**
@@ -402,8 +462,10 @@ class Application_Model extends CI_Model {
  * @access public
  */
 	public function afterGet($results = array()) {
-		foreach($this->actsAs as $behavior) {
-			$this->{$behavior}->afterGet($this, $results);
+		foreach($this->actsAs as $behavior => $settings) {
+			$results = $this->{$behavior}->afterGet($this, $results);
 		}
+		
+		return $results;
 	}
 }
