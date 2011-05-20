@@ -185,7 +185,15 @@ class Application_Model extends CI_Model {
  */
 	public function delete($id = null) {
 		if ($id) {
-			return $this->mongo_db->where(array('_id' => $id))->delete($this->collection);
+			// before delete callback
+			$this->beforeDelete($id, false);
+			
+			$success = $this->mongo_db->where(array('_id' => $id))->delete($this->collection);
+			
+			// after delete callback
+			$this->afterDelete($success);
+			
+			return $success;
 		}
 	}
 	
@@ -199,7 +207,15 @@ class Application_Model extends CI_Model {
  */
 	public function deleteAll($conditions = array()) {
 		if ($id) {
-			return $this->mongo_db->where($conditions)->delete($this->collection);
+			// before delete callback
+			$this->beforeDelete($conditions, true);
+			
+			$success = $this->mongo_db->where($conditions)->delete($this->collection);
+			
+			// after delete callback
+			$this->afterDelete($success);
+			
+			return $success;
 		}
 	}
 	
@@ -249,11 +265,13 @@ class Application_Model extends CI_Model {
  * - beforeValidate
  * - beforeInsert
  * - beforeUpdate
+ * - beforeDelete
  * - beforeGet
  * 
  * - afterValidate
  * - afterInsert
  * - afterUpdate
+ * - afterDelete
  * - afterGet
  */
 
@@ -340,6 +358,33 @@ class Application_Model extends CI_Model {
 		}
 	}
 	
+/**
+ * Before Delete Callback.
+ * 
+ * @access public
+ * @param mixed $params: the id of the record to delete or the conditions
+ * of the delete query.
+ * @param boolean $multiple: deleting multiple records via deleteAll or not
+ * via delete.
+ */
+	public function beforeDelete($params, $multiple = false) {
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->beforeDelete($this, $params, $multiple);
+		}
+	}
+
+/**
+ * After Delete Callback
+ * 
+ * @access public
+ * @param boolean $success: delete succeeded or not
+ */
+	public function afterDelete($success) {
+		foreach($this->actsAs as $behavior) {
+			$this->{$behavior}->afterInsert($this, $success);
+		}
+	}
+
 /**
  * Before Get Callback.
  * 
