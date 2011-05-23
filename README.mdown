@@ -1,0 +1,50 @@
+==CodeIgniter Gasoline Package==
+__CakePHP-like Model, Behaviors, and Validation__
+
+This package provides you with an Application Model that you can extend to make
+use of its callbacks and built-in validation. The model uses MongoDB as a data
+source.
+
+===Model Example===
+	
+	class Post extends Application_Model {
+	/**
+	 * Name of the mongo collection this
+	 * model uses.
+	 */
+		protected $collection = 'posts';
+
+	/**
+	 * Validation criteria
+	 */
+		public $validate = array(
+			'title' => array('required'),
+			'body'  => array('required')
+		);
+
+	/**
+	 * Behaviors and their settings.
+	 */	
+		public $actsAs = array(
+			'Sluggable' => array(
+				'field' => 'title',
+				'replacement' => '-',
+			)
+		);
+
+	/**
+	 * Before inserting stuff
+	 */
+		function beforeInsert($data) {
+			$this->data['created'] = time();
+			parent::beforeInsert($data);
+		}
+
+	/**
+	 * Before updating stuff
+	 */	
+		function beforeUpdate($data = array(), $options = array()) {
+			$this->data['updated'] = time();
+			parent::beforeUpdate($data, $options);
+		}
+	}

@@ -1,10 +1,4 @@
 <?php
-/**
- * Sluggable Behavior
- * 
- * This takes a field and creates a slug from it and stores
- * it in the model's data as 'slug'.
- */
 class Sluggable_Behavior extends Behavior {
 	
 /**
@@ -82,7 +76,7 @@ class Sluggable_Behavior extends Behavior {
 		// slug has to be unique.
 		$i = 0;
 		while ($model->isUnique('slug', $slug) !== true) {
-			$slug = $this->sluggify($data[$this->settings['field']]) . $i++;
+			$slug = $this->sluggify($data[$this->settings['field']]) . '-' . $i++;
 		}
 		
 		$model->data['slug'] = $slug;
@@ -99,8 +93,7 @@ class Sluggable_Behavior extends Behavior {
 			// slug has to be unique.
 			$i = 1;
 			while ($model->isUnique('slug', $slug) !== true) {
-				$slug = $this->sluggify($data[$this->settings['field']]) . '-' . $i;
-				$i++;
+				$slug = $this->sluggify($data[$this->settings['field']]) . '-' . $i++;
 			}
 			
 			$model->data['slug'] = $slug;
