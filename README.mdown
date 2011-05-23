@@ -1,11 +1,11 @@
-==CodeIgniter Gasoline Package==
+#CodeIgniter Gasoline Package#
 __CakePHP-like Model, Behaviors, and Validation__
 
 This package provides you with an Application Model that you can extend to make
-use of its callbacks and built-in validation. The model uses MongoDB as a data
-source.
+use of its callbacks and built-in validation. **The model uses MongoDB as a data
+source**.
 
-===Model Example===
+###Model Example###
 	
 	class Post extends Application_Model {
 	/**
