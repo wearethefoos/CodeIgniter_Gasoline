@@ -132,6 +132,6 @@ class Sluggable_Behavior extends Behavior {
         );
 
         $map = $map + $this->transliteration + $merge;
-        return preg_replace(array_keys($map), array_values($map), $string);
+        return strtolower(preg_replace(array_keys($map), array_values($map), $string));
     }
 }
