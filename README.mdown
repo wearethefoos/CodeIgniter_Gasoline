@@ -5,6 +5,16 @@ This package provides you with an Application Model that you can extend to make
 use of its callbacks and built-in validation. **The model uses MongoDB as a data
 source**.
 
+###Configuration###
+
+Add this to `/config/autoload.php` to load the Application Model automatically.
+
+	$autoload['model'] = array('application_model');
+	
+Update `/config/mongo_db.php` and set the
+
+	$config['mongo_db'] = "your_database_name";
+
 ###Model Example###
 	
 	class Post extends Application_Model {
