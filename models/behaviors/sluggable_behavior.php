@@ -92,7 +92,7 @@ class Sluggable_Behavior extends Behavior {
 			
 			// slug has to be unique.
 			$i = 1;
-			while ($model->isUnique('slug', $slug) !== true) {
+			while ($model->isUnique('slug', $slug, $data['_id']) !== true) {
 				$slug = $this->sluggify($data[$this->settings['field']]) . '-' . $i++;
 			}
 			

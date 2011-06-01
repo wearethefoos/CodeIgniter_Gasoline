@@ -1,7 +1,4 @@
 <?php
-/**
- * Default behavior class includes default callbacks.
- */
 class Behavior {
 	private $defaults = array();
 	private $settings = array();
@@ -34,5 +31,13 @@ class Behavior {
 	
 	public function afterGet(&$model, $results) {
 		return $results;
+	}
+	
+	public function beforeUpdate(&$model, $update, $options) {
+		
+	}
+	
+	public function afterUpdate(&$model, $success) {
+		
 	}
 }

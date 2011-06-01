@@ -203,7 +203,7 @@ class Application_Model extends CI_Model {
  * 
  * @access public
  * @param Array $data: the data to save.
- * @param Array $options: the selection criteria for the record to update.
+ * @param Array $options: options the record to update.
  * @return boolean: success or failure.
  */
 	public function update($data = array(), $options = array()) {
@@ -212,18 +212,14 @@ class Application_Model extends CI_Model {
 			// set model data
 			$this->data = array_merge($this->data, $data);
 			
-			if (isset($this->data['_id'])) {
-				$options['_id'] = $this->data['_id'];
-			}
-			elseif ($this->id) {
-				$options['_id'] = $this->id;
-			}
+			$where = array('_id' => $this->data['_id']);
 			
 			// before insert callback
 			$this->beforeUpdate($data);
 
-			// insert
-			$result = $this->mongo_db->update($this->collection, $this->data, $options);
+			// update
+			unset($this->data['_id']);
+			$result = $this->mongo_db->where($where)->update($this->collection, $this->data, $options);
 
 			// after insert callback
 			$this->afterUpdate($result);
@@ -313,8 +309,8 @@ class Application_Model extends CI_Model {
  * @param string $field: the field to check.
  * @param mixed $value: the value to check.
  */
-	public function isUnique($field = "", $value = "") {
-		return $this->mongo_db->isUnique($this->collection, $field, $value);
+	public function isUnique($field = "", $value = "", $not = false) {
+		return $this->mongo_db->isUnique($this->collection, $field, $value, $not);
 	}
 	
 /**
