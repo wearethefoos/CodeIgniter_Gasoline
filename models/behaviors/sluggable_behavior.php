@@ -67,28 +67,28 @@ class Sluggable_Behavior extends Behavior {
 	private $settings = array();
 	
 	public function init(&$model, $settings = array()) {
-		$this->settings = array_merge($this->settings, $settings);
+		$this->settings[get_class($model)] = array_merge($this->defaults, $settings);
 	}
 	
 	public function beforeInsert(&$model, $data) {
-		if (is_array($this->settings['field'])) {
-			foreach ($this->settings['field'] as $fld) {
+		if (is_array($this->settings[get_class($model)]['field'])) {
+			foreach ($this->settings[get_class($model)]['field'] as $fld) {
 				if (isset($slug_string)) {
-					$slug_string .= $this->settings['replacement'] . $data[$fld];
+					$slug_string .= ' ' . $data[$fld];
 				} else {
-					$slug_string = $data[$fld];					
+					$slug_string = $data[$fld];
 				}
 			}
 		} else {
-			$slug_string = $data[$this->settings['field']];
+			$slug_string = $data[$this->settings[get_class($model)]['field']];
 		}
 		
-		$slug = $this->sluggify($slug_string);
+		$slug = $this->sluggify($slug_string, $this->settings[get_class($model)]['replacement']);
 		
 		// slug has to be unique.
 		$i = 0;
 		while ($model->isUnique('slug', $slug) !== true) {
-			$slug = $this->sluggify($slug_string) . '-' . $i++;
+			$slug = $this->sluggify($slug_string, $this->settings[get_class($model)]['replacement']) . $this->settings[get_class($model)]['replacement'] . $i++;
 		}
 		
 		$model->data['slug'] = $slug;
@@ -99,14 +99,14 @@ class Sluggable_Behavior extends Behavior {
 	public function beforeUpdate(&$model, $data) {		
 		// check if the sluggable field data has changed
 		$update_slug = false;
-		if (is_array($this->settings['field'])) {
-			foreach ($this->settings['field'] as $fld) {
-				if ($model->read($fld, $model->data['_id']) != $model->data[$fld] || $update_slug) {
+		if (is_array($this->settings[get_class($model)]['field'])) {
+			foreach ($this->settings[get_class($model)]['field'] as $fld) {
+				if ($model->read($fld, $model->data['_id']) != $model->data[$fld]) {
 					$update_slug = true;
 				}
 			}
 			if ($update_slug) {
-				foreach ($this->settings['field'] as $fld) {
+				foreach ($this->settings[get_class($model)]['field'] as $fld) {
 					if (isset($slug_string)) {
 						$slug_string .= ' ' . $data[$fld];
 					} else {
@@ -114,21 +114,22 @@ class Sluggable_Behavior extends Behavior {
 					}
 				}
 			}
-		}
-		elseif ($model->read($this->settings['field'], $model->data['_id']) != $model->data[$this->settings['field']]) {
+		}		
+		elseif ($model->read($this->settings[get_class($model)]['field'], $model->data['_id']) != $model->data[$this->settings[get_class($model)]['field']]) {
 			
-			$slug_string = $data[$this->settings['field']];
+			$slug_string = $data[$this->settings[get_class($model)]['field']];
 			
 			$update_slug = true;
 		}
+		
 		// update slug
 		if ($update_slug) {
-			$slug = $this->sluggify($slug_string);
+			$slug = $this->sluggify($slug_string, $this->settings[get_class($model)]['replacement']);
 			
 			// slug has to be unique.
 			$i = 1;
 			while ($model->isUnique('slug', $slug, $data['_id']) !== true) {
-				$slug = $this->sluggify($slug_string) . '-' . $i++;
+				$slug = $this->sluggify($slug_string, $this->settings[get_class($model)]['replacement']) . $this->settings[get_class($model)]['replacement'] . $i++;
 			}
 			
 			$model->data['slug'] = $slug;
@@ -151,7 +152,7 @@ class Sluggable_Behavior extends Behavior {
  */
     public function sluggify($string, $replacement = null, $map = array()) {
 		if (!$replacement) {
-			$replacement = $this->settings['replacement'];
+			$replacement = '-';
 		}
 
         if (is_array($replacement)) {
