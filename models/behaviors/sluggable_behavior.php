@@ -71,12 +71,24 @@ class Sluggable_Behavior extends Behavior {
 	}
 	
 	public function beforeInsert(&$model, $data) {
-		$slug = $this->sluggify($data[$this->settings['field']]);
+		if (is_array($this->settings['field'])) {
+			foreach ($this->settings['field'] as $fld) {
+				if (isset($slug_string)) {
+					$slug_string .= $this->settings['replacement'] . $data[$fld];
+				} else {
+					$slug_string = $data[$fld];					
+				}
+			}
+		} else {
+			$slug_string = $data[$this->settings['field']];
+		}
+		
+		$slug = $this->sluggify($slug_string);
 		
 		// slug has to be unique.
 		$i = 0;
 		while ($model->isUnique('slug', $slug) !== true) {
-			$slug = $this->sluggify($data[$this->settings['field']]) . '-' . $i++;
+			$slug = $this->sluggify($slug_string) . '-' . $i++;
 		}
 		
 		$model->data['slug'] = $slug;
@@ -84,16 +96,39 @@ class Sluggable_Behavior extends Behavior {
 		return true;
 	}
 	
-	public function beforeUpdate(&$model, $data) {
+	public function beforeUpdate(&$model, $data) {		
 		// check if the sluggable field data has changed
-		if ($model->read($this->settings['field'], $model->data['_id']) != $model->data[$this->settings['field']]) {
+		$update_slug = false;
+		if (is_array($this->settings['field'])) {
+			foreach ($this->settings['field'] as $fld) {
+				if ($model->read($fld, $model->data['_id']) != $model->data[$fld] || $update_slug) {
+					$update_slug = true;
+				}
+			}
+			if ($update_slug) {
+				foreach ($this->settings['field'] as $fld) {
+					if (isset($slug_string)) {
+						$slug_string .= ' ' . $data[$fld];
+					} else {
+						$slug_string = $data[$fld];
+					}
+				}
+			}
+		}
+		elseif ($model->read($this->settings['field'], $model->data['_id']) != $model->data[$this->settings['field']]) {
 			
-			$slug = $this->sluggify($data[$this->settings['field']]);
+			$slug_string = $data[$this->settings['field']];
+			
+			$update_slug = true;
+		}
+		// update slug
+		if ($update_slug) {
+			$slug = $this->sluggify($slug_string);
 			
 			// slug has to be unique.
 			$i = 1;
 			while ($model->isUnique('slug', $slug, $data['_id']) !== true) {
-				$slug = $this->sluggify($data[$this->settings['field']]) . '-' . $i++;
+				$slug = $this->sluggify($slug_string) . '-' . $i++;
 			}
 			
 			$model->data['slug'] = $slug;
