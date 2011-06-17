@@ -442,7 +442,7 @@ class Mongo_db {
 	
 	function where_near($field = '', $co = array())
 	{
-		$this->__where_init($field);
+		$this->_where_init($field);
 		$this->where[$what]['$near'] = $co;
 		return ($this);
 	}
@@ -480,7 +480,7 @@ class Mongo_db {
 	public function like($field = "", $value = "", $flags = "i", $enable_start_wildcard = TRUE, $enable_end_wildcard = TRUE)
 	 {
 	 	$field = (string) trim($field);
-	 	$this->where_init($field);
+	 	$this->_where_init($field);
 	 	$value = (string) trim($value);
 	 	$value = quotemeta($value);
 	 	
