@@ -1012,11 +1012,11 @@ class Mongo_db {
 			$this->updates['$pop'][$field] = -1;
 		}
 		
-		elseif (is_array($fields))
+		elseif (is_array($field))
 		{
-			foreach ($fields as $field)
+			foreach ($field as $f)
 			{
-				$this->updates['$pop'][$field] = -1;
+				$this->updates['$pop'][$f] = -1;
 			}
 		}
 		
