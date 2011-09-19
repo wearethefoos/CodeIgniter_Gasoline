@@ -784,7 +784,7 @@ class Mongo_db {
 	*	@usage: $this->mongo_db->update_all('foo', $data = array());
 	*/
 	
-	public function update_all($collection = "", $data = array())
+	public function update_all($collection = "", $data = array(), $options = array())
 	{
 		if (empty($collection))
 		{
